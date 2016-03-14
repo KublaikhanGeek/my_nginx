@@ -1,0 +1,1 @@
+./configure --with-debug --prefix=/usr/local/nginx --user=root --with-http_spdy_module --with-http_ssl_module --with-pcre=../pcre-8.37 --with-zlib=../zlib-1.2.8 --with-openssl=../openssl-1.0.2d --add-module=src/bauschlomb
