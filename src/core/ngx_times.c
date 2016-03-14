@@ -47,8 +47,11 @@ static u_char            cached_err_log_time[NGX_TIME_SLOTS]
                                     [sizeof("1970/09/28 12:00:00")];
 static u_char            cached_http_time[NGX_TIME_SLOTS]
                                     [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
+// time_local
+// jstatic u_char            cached_http_log_time[NGX_TIME_SLOTS]
+//                                    [sizeof("28/Sep/1970:12:00:00 +0600")];
 static u_char            cached_http_log_time[NGX_TIME_SLOTS]
-                                    [sizeof("28/Sep/1970:12:00:00 +0600")];
+                                    [128];
 static u_char            cached_http_log_iso8601[NGX_TIME_SLOTS]
                                     [sizeof("1970-09-28T12:00:00+06:00")];
 static u_char            cached_syslog_time[NGX_TIME_SLOTS]
@@ -64,7 +67,8 @@ ngx_time_init(void)
 {
     ngx_cached_err_log_time.len = sizeof("1970/09/28 12:00:00") - 1;
     ngx_cached_http_time.len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
-    ngx_cached_http_log_time.len = sizeof("28/Sep/1970:12:00:00 +0600") - 1;
+    // ngx_cached_http_log_time.len = sizeof("28/Sep/1970:12:00:00 +0600") - 1;
+    ngx_cached_http_log_time.len = sizeof("1970-09-28 12:00:00 +0600") - 1;
     ngx_cached_http_log_iso8601.len = sizeof("1970-09-28T12:00:00+06:00") - 1;
     ngx_cached_syslog_time.len = sizeof("Sep 28 12:00:00") - 1;
 
@@ -152,14 +156,18 @@ ngx_time_update(void)
                        tm.ngx_tm_min, tm.ngx_tm_sec);
 
 
+    // time_local
     p2 = &cached_http_log_time[slot][0];
 
-    (void) ngx_sprintf(p2, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
-                       tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
-                       tm.ngx_tm_year, tm.ngx_tm_hour,
-                       tm.ngx_tm_min, tm.ngx_tm_sec,
-                       tp->gmtoff < 0 ? '-' : '+',
-                       ngx_abs(tp->gmtoff / 60), ngx_abs(tp->gmtoff % 60));
+    // (void) ngx_sprintf(p2, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
+    //                   tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
+    //                   tm.ngx_tm_year, tm.ngx_tm_hour,
+    //                   tm.ngx_tm_min, tm.ngx_tm_sec,
+    //                   tp->gmtoff < 0 ? '-' : '+',
+    //                   ngx_abs(tp->gmtoff / 60), ngx_abs(tp->gmtoff % 60));
+    struct timeval tLocal;
+    gettimeofday(&tLocal, NULL);
+    (void) ngx_sprintf(p2, "%l", tLocal.tv_sec);
 
     p3 = &cached_http_log_iso8601[slot][0];
 
@@ -182,6 +190,7 @@ ngx_time_update(void)
     ngx_cached_http_time.data = p0;
     ngx_cached_err_log_time.data = p1;
     ngx_cached_http_log_time.data = p2;
+    ngx_cached_http_log_time.len = strlen((char*)p2);
     ngx_cached_http_log_iso8601.data = p3;
     ngx_cached_syslog_time.data = p4;
 

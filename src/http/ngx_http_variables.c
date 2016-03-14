@@ -56,6 +56,10 @@ static ngx_int_t ngx_http_variable_remote_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_remote_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_get_arp(ngx_http_request_t *rp,
+    ngx_http_variable_value_t *vp, uintptr_t data);
+static ngx_int_t ngx_http_variable_remote_mac(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_server_addr(ngx_http_request_t *r,
@@ -188,6 +192,8 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("remote_addr"), NULL, ngx_http_variable_remote_addr, 0, 0, 0 },
 
     { ngx_string("remote_port"), NULL, ngx_http_variable_remote_port, 0, 0, 0 },
+
+    { ngx_string("remote_mac"), NULL, ngx_http_variable_remote_mac, 0, 0, 0 },
 
     { ngx_string("proxy_protocol_addr"), NULL,
       ngx_http_variable_proxy_protocol_addr, 0, 0, 0 },
@@ -1232,6 +1238,52 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
     return NGX_OK;
 }
 
+
+static ngx_int_t
+ngx_http_variable_remote_mac(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    v->len = sizeof("00:00:00:00:00:00") - 1;
+    v->data = ngx_pnalloc(r->pool, v->len);
+    ngx_memcpy(v->data, "00:00:00:00:00:00", v->len);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = (NGX_OK == ngx_http_variable_get_arp(r, v, data)) ? 0 : 1;
+
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_http_variable_get_arp(ngx_http_request_t *rp,
+    ngx_http_variable_value_t *vp, uintptr_t data)
+{
+    FILE *proc = NULL;
+    char ip[16] = {0};
+    char mac[18] = {0};
+    ngx_int_t ret = NGX_ERROR;
+    if (!(proc = fopen("/proc/net/arp", "r"))){
+        return NGX_ERROR;
+    }
+
+    /*Skip first line*/
+    while (!feof(proc) && fgetc(proc) != '\n') ;
+
+    /*Copy mac*/
+    while (!feof(proc) && (fscanf(proc, " %15[0-9.] %*s %*s %17[A-Fa-f0-9:] %*s %*s", ip, mac) == 2)) {
+        if (ngx_strcmp(ip, rp->connection->addr_text.data) == 0) {
+            ngx_memcpy(vp->data, mac, vp->len);
+            ret = NGX_OK;
+            break;
+        }
+    }
+
+    fclose(proc);
+    return ret;
+}
 
 static ngx_int_t
 ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
