@@ -1289,7 +1289,7 @@ ngx_http_variable_get_arp(ngx_http_request_t *rp,
     {
         char* tmp = strtok(lineBuf, delim);
 
-        if (ngx_strcmp(tmp, rp->connection->addr_text.data) != 0)
+        if (ngx_strncmp(tmp, rp->connection->addr_text.data, rp->connection->addr_text.len) != 0)
            continue;
 
         int ncount = 1;
@@ -1300,6 +1300,7 @@ ngx_http_variable_get_arp(ngx_http_request_t *rp,
            {
             //  printf("find mac is %s\n", tmp);
               ngx_memcpy(vp->data, tmp, vp->len);
+            ret = NGX_OK;
               break;
            }
 
