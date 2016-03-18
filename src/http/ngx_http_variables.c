@@ -1262,8 +1262,8 @@ ngx_http_variable_get_arp(ngx_http_request_t *rp,
     ngx_http_variable_value_t *vp, uintptr_t data)
 {
     FILE *proc = NULL;
-    char ip[16] = {0};
-    char mac[18] = {0};
+   // char ip[16] = {0};
+    //char mac[18] = {0};
     ngx_int_t ret = NGX_ERROR;
     if (!(proc = fopen("/proc/net/arp", "r"))){
         return NGX_ERROR;
@@ -1273,6 +1273,7 @@ ngx_http_variable_get_arp(ngx_http_request_t *rp,
     while (!feof(proc) && fgetc(proc) != '\n') ;
 
     /*Copy mac*/
+#if 0
     while (!feof(proc) && (fscanf(proc, " %15[0-9.] %*s %*s %17[A-Fa-f0-9:] %*s %*s", ip, mac) == 2)) {
         if (ngx_strcmp(ip, rp->connection->addr_text.data) == 0) {
             ngx_memcpy(vp->data, mac, vp->len);
@@ -1280,6 +1281,38 @@ ngx_http_variable_get_arp(ngx_http_request_t *rp,
             break;
         }
     }
+#else
+
+    char lineBuf[1024] = {0};
+    char* delim = " ";
+    while(fgets(lineBuf, 1024, proc) != NULL)
+    {
+        char* tmp = strtok(lineBuf, delim);
+
+        if (ngx_strcmp(tmp, rp->connection->addr_text.data) != 0)
+           continue;
+
+        int ncount = 1;
+        while(tmp != NULL)
+        {
+           //printf("test is %s\n", tmp);
+           if (4 == ncount)
+           {
+            //  printf("find mac is %s\n", tmp);
+              ngx_memcpy(vp->data, tmp, vp->len);
+              break;
+           }
+
+           tmp = strtok(NULL, delim);
+           ++ncount;
+        }
+
+        if (4 == ncount)
+            break;
+
+    }
+
+#endif
 
     fclose(proc);
     return ret;
